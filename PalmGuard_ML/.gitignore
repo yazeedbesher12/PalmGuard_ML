@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Large artifacts / runs
+outputs/
+models/*.pt
+
+# OS
+.DS_Store
+Thumbs.db
