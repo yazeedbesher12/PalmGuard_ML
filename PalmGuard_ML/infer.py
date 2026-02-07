@@ -11,15 +11,10 @@ from src.infer_utils import load_model, infer_segment_probs, aggregate_tree_risk
 
 
 def main():
-    # -----------------------
-    # Settings (edit these)
-    # -----------------------
+
     top_k = 5
     batch_size = 64
 
-    # -----------------------
-    # Checks
-    # -----------------------
     if not os.path.exists(LABELS_CSV):
         raise FileNotFoundError(f"labels.csv not found: {LABELS_CSV}")
     if not os.path.exists(BEST_MODEL_PATH):
@@ -29,18 +24,12 @@ def main():
 
     os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
-    # -----------------------
-    # Load data + model
-    # -----------------------
     df = load_labels(LABELS_CSV)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     model, audio_cfg, ckpt = load_model(BEST_MODEL_PATH, device=device)
     print("Loaded model. best_val_acc:", ckpt.get("best_val_acc"), "best_epoch:", ckpt.get("best_epoch"))
 
-    # -----------------------
-    # Infer segment probabilities
-    # -----------------------
     seg_df = infer_segment_probs(
         model,
         df_files=df,
@@ -54,18 +43,12 @@ def main():
     seg_df.to_csv(seg_out, index=False)
     print("Saved:", seg_out, "| rows:", seg_df.shape[0])
 
-    # -----------------------
-    # Aggregate to tree risk score
-    # -----------------------
     tree_df = aggregate_tree_risk(seg_df, top_k=top_k)
 
     tree_out = os.path.join(OUTPUTS_DIR, "tree_risk_ranking.csv")
     tree_df.to_csv(tree_out, index=False)
     print("Saved:", tree_out, "| rows:", tree_df.shape[0])
 
-    # -----------------------
-    # Tree-level evaluation (if labels exist)
-    # -----------------------
     if "label" in tree_df.columns:
         threshold = 0.5  # edit me
         metrics = tree_level_metrics(tree_df, threshold=threshold)
@@ -84,7 +67,6 @@ def main():
         print("Saved:", metrics_out)
         print("Saved:", cm_out)
 
-    # Quick view: top 10
     print("\nTop 10 risky trees:")
     print(tree_df.head(10).to_string(index=False))
 

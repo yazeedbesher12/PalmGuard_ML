@@ -15,17 +15,14 @@ from .audio import wav_load, logmel_segments
 
 def load_labels(csv_path: str = LABELS_CSV) -> pd.DataFrame:
     """Load labels.csv.
-
     Expected columns (minimum):
       - file_path: relative path under data/dataset/
       - tree_id
       - label (0/1)
-
     Note: We intentionally DO NOT require a 'split' column.
     """
-    df = pd.read_csv(csv_path)
 
-    # Normalize types
+    df = pd.read_csv(csv_path)
     if "file_path" not in df.columns:
         raise ValueError("labels.csv must contain 'file_path' column")
 
