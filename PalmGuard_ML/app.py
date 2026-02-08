@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import logging
 from datetime import datetime
 from urllib.parse import quote
 
@@ -23,6 +24,11 @@ from src.infer_utils import (
     tree_confusion_matrix_df,
 )
 from src.audio import wav_load, logmel_from_waveform
+
+
+LOGGER = logging.getLogger("palmguard.app")
+if not LOGGER.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 # -----------------------
 # Page config + style
@@ -397,15 +403,24 @@ def require_dataset():
         st.error("labels.csv not found. Put your dataset at: data/dataset/labels.csv")
         st.stop()
 
+@st.cache_data(show_spinner=False)
 def load_metrics_if_any():
+    """Load training metrics if models/metrics.json exists.
+
+    Returns None when the file is missing or unreadable.
+    """
     mpath = os.path.join(MODEL_DIR, "metrics.json")
-    if os.path.exists(mpath):
-        try:
-            return json.load(open(mpath, "r", encoding="utf-8"))
-        except Exception:
-            return None
+    if not os.path.exists(mpath):
+        return None
+    try:
+        with open(mpath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        LOGGER.warning("Could not read metrics.json (%s): %s", mpath, e)
+        return None
     return None
 
+@st.cache_data(show_spinner=False)
 def load_tree_locations():
     """Load farm layout positions (row/col) for each tree.
 
@@ -480,7 +495,7 @@ def render_farm_grid(loc_df: pd.DataFrame, risk_df: pd.DataFrame, threshold: flo
                 if hasattr(rec, "label"):
                     try:
                         label = int(getattr(rec, "label")) if pd.notna(getattr(rec, "label")) else None
-                    except Exception:
+                    except (ValueError, TypeError):
                         label = None
 
             # decide color
