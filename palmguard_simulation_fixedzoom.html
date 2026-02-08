@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PalmGuard — 3D Simulation (30s)</title>
+  <style>
+    :root{
+      --bg:#071b12;
+      --card:rgba(255,255,255,.14);
+      --stroke:rgba(255,255,255,.22);
+      --text:#f4fff9;
+      --muted:rgba(244,255,249,.78);
+      --green:#24d07a;
+      --yellow:#ffcc66;
+      --red:#ff5c5c;
+      --shadow:0 18px 40px rgba(0,0,0,.30);
+      --radius:18px;
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      background:
+        radial-gradient(1100px 700px at 30% 20%, rgba(36,208,122,.22), transparent 60%),
+        radial-gradient(900px 600px at 70% 40%, rgba(255,204,102,.14), transparent 60%),
+        var(--bg);
+      overflow:hidden;
+      font-family:system-ui,-apple-system,Segoe UI,Arial;
+    }
+    #c{position:fixed; inset:0; display:block}
+    .ui{
+      position:fixed; inset:0; pointer-events:none;
+      color:var(--text);
+      padding:18px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+    .topbar{
+      display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:10px 12px; border-radius:999px;
+      background:rgba(36,208,122,.14);
+      border:1px solid rgba(36,208,122,.35);
+      font-weight:900; font-size:12px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.30);
+      user-select:none;
+    }
+    .card{
+      width:min(620px, 92vw);
+      background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.08));
+      border:1px solid var(--stroke);
+      border-radius:var(--radius);
+      box-shadow:0 18px 40px rgba(0,0,0,.30);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+      opacity:0;
+      transition:opacity .45s ease;
+    }
+    .card .hd{
+      padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.12);
+      font-weight:1000; letter-spacing:.2px;
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    }
+    .badge{
+      padding:6px 10px; border-radius:999px;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.20);
+      font-weight:900; font-size:12px;
+      white-space:nowrap;
+    }
+    .card .bd{padding:12px 14px; display:grid; gap:10px}
+    .row{display:flex; justify-content:space-between; gap:12px; align-items:center}
+    .muted{color:var(--muted); font-weight:800; font-size:12px}
+    .val{font-weight:1000}
+    .tags{display:flex; gap:8px; flex-wrap:wrap}
+    .tag{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(0,0,0,.12);
+      font-weight:950; font-size:12px;
+    }
+    .good{border-color:rgba(36,208,122,.45); background:rgba(36,208,122,.14)}
+    .warn{border-color:rgba(255,204,102,.55); background:rgba(255,204,102,.16)}
+    .bad{border-color:rgba(255,92,92,.60); background:rgba(255,92,92,.16)}
+    .subtitle{max-width:min(880px, 92vw); line-height:1.8; font-weight:800; font-size:12.5px; color:var(--muted)}
+    .bigTitle{font-size:18px; font-weight:1100}
+    .caption{
+      width:min(880px, 92vw);
+      padding:12px 14px;
+      border-radius:var(--radius);
+      background:rgba(0,0,0,.26);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:0 18px 40px rgba(0,0,0,.30);
+      backdrop-filter: blur(8px);
+      opacity:0;
+      transition:opacity .45s ease;
+      user-select:none;
+    }
+    .centerBottom{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:18px;
+      display:flex; justify-content:center;
+      pointer-events:none;
+    }
+    .ctaWrap{
+      position:fixed; left:18px; bottom:18px; display:flex; gap:10px; pointer-events:auto;
+    }
+    button{
+      border:none; cursor:pointer;
+      padding:12px 14px; border-radius:14px;
+      font-weight:1000;
+      color:#02150c;
+      background:linear-gradient(135deg, #2ef08a, #12a157);
+      box-shadow:0 18px 45px rgba(36,208,122,.24);
+    }
+    button.secondary{
+      color:var(--text);
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.20);
+      box-shadow:0 18px 45px rgba(0,0,0,.22);
+    }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="ui">
+  <div class="topbar">
+    <div>
+      <div class="pill">PalmGuard • Acoustic AI • Farm Monitoring • 30s</div>
+      <div style="height:10px"></div>
+      <div class="bigTitle">نظام مراقبة النخيل والكشف المبكر عن السوسة ✦</div>
+      <div class="subtitle">
+        حساسات صوت/اهتزاز على جذع النخلة → Log‑Mel → CNN → Risk Score → تمييز موقع الشجرة على شبكة المزرعة.
+      </div>
+    </div>
+    <div class="pill" id="timerPill">00:00</div>
+  </div>
+
+  <div class="card" id="panel">
+    <div class="hd">
+      <div id="panelTitle">PalmGuard</div>
+      <div class="badge" id="panelBadge">Sensors → AI → Risk</div>
+    </div>
+    <div class="bd" id="panelBody"></div>
+  </div>
+
+  <div class="centerBottom">
+    <div class="caption" id="caption"></div>
+  </div>
+</div>
+
+<div class="ctaWrap">
+  <button id="playBtn">▶ تشغيل العرض</button>
+  <button id="resetBtn" class="secondary">↺ إعادة</button>
+</div>
+
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+  // ---------- Helpers ----------
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const smoothstep = (t)=>t*t*(3-2*t);
+  const now = ()=>performance.now()/1000;
+
+  // ---------- UI ----------
+  const panel = document.getElementById('panel');
+  const panelTitle = document.getElementById('panelTitle');
+  const panelBadge = document.getElementById('panelBadge');
+  const panelBody = document.getElementById('panelBody');
+  const caption = document.getElementById('caption');
+  const timerPill = document.getElementById('timerPill');
+
+  function setPanel(show, title, badge, html){
+    panel.style.opacity = show ? 1 : 0;
+    panelTitle.textContent = title || '';
+    panelBadge.textContent = badge || '';
+    panelBody.innerHTML = html || '';
+  }
+  function setCaption(show, text){
+    caption.style.opacity = show ? 1 : 0;
+    caption.textContent = text || '';
+  }
+  function formatTime(s){
+    const mm = String(Math.floor(s/60)).padStart(2,'0');
+    const ss = String(Math.floor(s%60)).padStart(2,'0');
+    return `${mm}:${ss}`;
+  }
+
+  // ---------- Scene Setup ----------
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0a2417, 0.020);
+
+  const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 320);
+  camera.position.set(0, 32, 42);
+
+  // Lights
+  const hemi = new THREE.HemisphereLight(0xe3fff4, 0x5a3d24, 0.78);
+  scene.add(hemi);
+
+  const key = new THREE.DirectionalLight(0xffffff, 1.40);
+  key.position.set(18, 26, 14);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048,2048);
+  key.shadow.camera.left = -70;
+  key.shadow.camera.right = 70;
+  key.shadow.camera.top = 70;
+  key.shadow.camera.bottom = -70;
+  scene.add(key);
+
+  const rim = new THREE.DirectionalLight(0xa4f3ff, 0.22);
+  rim.position.set(-22, 12, -18);
+  scene.add(rim);
+
+  // ---------- Desert Ground (procedural dunes) ----------
+  const groundGeo = new THREE.PlaneGeometry(120, 90, 70, 52);
+  const pos = groundGeo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const x = pos.getX(i);
+    const z = pos.getY(i);
+    const dunes = Math.sin(x*0.085)*0.28 + Math.cos(z*0.075)*0.22 + Math.sin((x+z)*0.045)*0.16;
+    const micro = Math.sin(x*0.9 + z*0.6)*0.03;
+    pos.setZ(i, dunes + micro);
+  }
+  groundGeo.computeVertexNormals();
+
+  const groundMat = new THREE.MeshStandardMaterial({
+    color:0xd8c6a2,
+    roughness:0.98,
+    metalness:0.0
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Farm boundary
+  const border = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(76, 0.01, 76)),
+    new THREE.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.10 })
+  );
+  border.position.set(0, 0.02, 0);
+  scene.add(border);
+
+  // ---------- Palm farm (Instanced) ----------
+  const GRID_COLS = 10;
+  const GRID_ROWS = 10;
+  const COUNT = GRID_COLS * GRID_ROWS;
+  const SPACING = 6.4;
+
+  const trunkGeo = new THREE.CylinderGeometry(0.35, 0.55, 5.2, 10, 1);
+  const trunkMat = new THREE.MeshStandardMaterial({ color:0x6b4a2e, roughness:0.95, metalness:0.0 });
+  const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, COUNT);
+  trunks.castShadow = true;
+  trunks.receiveShadow = true;
+
+  const crownGeo = new THREE.SphereGeometry(1.45, 10, 10);
+  const crownMat = new THREE.MeshStandardMaterial({
+    color:0x2dd477, roughness:0.85, metalness:0.0,
+    emissive:0x0b2b18, emissiveIntensity:0.12
+  });
+  const crowns = new THREE.InstancedMesh(crownGeo, crownMat, COUNT);
+  crowns.castShadow = true;
+  crowns.receiveShadow = true;
+
+  // ---------- Sensors (Instanced) ----------
+  const sensorGeo = new THREE.BoxGeometry(0.52, 0.34, 0.18);
+  const sensorMat = new THREE.MeshStandardMaterial({
+    color:0x1c3a2f,
+    roughness:0.45,
+    metalness:0.25,
+    emissive:0x0b2b18,
+    emissiveIntensity:0.28
+  });
+  const sensors = new THREE.InstancedMesh(sensorGeo, sensorMat, COUNT);
+  sensors.castShadow = true;
+  sensors.receiveShadow = true;
+
+  const antGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.55, 12);
+  const antMat = new THREE.MeshStandardMaterial({
+    color:0xcfe9dd,
+    roughness:0.35,
+    metalness:0.55,
+    emissive:0x0b2b18,
+    emissiveIntensity:0.10
+  });
+  const antennas = new THREE.InstancedMesh(antGeo, antMat, COUNT);
+  antennas.castShadow = true;
+
+  // Per-tree positions
+  const treePos = [];
+  const sensorPos = [];
+  const dummy = new THREE.Object3D();
+
+  const startX = -(GRID_COLS-1) * SPACING / 2;
+  const startZ = -(GRID_ROWS-1) * SPACING / 2;
+
+  for(let r=0;r<GRID_ROWS;r++){
+    for(let c=0;c<GRID_COLS;c++){
+      const i = r*GRID_COLS + c;
+      const x = startX + c*SPACING;
+      const z = startZ + r*SPACING;
+      treePos[i] = new THREE.Vector3(x, 0, z);
+
+      const ry = (Math.random()*Math.PI*2);
+
+      // trunk
+      dummy.position.set(x, 2.6, z);
+      dummy.rotation.set(0, ry, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      trunks.setMatrixAt(i, dummy.matrix);
+
+      // crown
+      dummy.position.set(x, 5.6, z);
+      dummy.rotation.set(0, ry, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      crowns.setMatrixAt(i, dummy.matrix);
+
+      // sensor position on trunk side
+      const sx = x + Math.cos(ry) * 0.65;
+      const sz = z - Math.sin(ry) * 0.65;
+      sensorPos[i] = new THREE.Vector3(sx, 1.95, sz);
+
+      dummy.position.set(sx, 1.95, sz);
+      dummy.rotation.set(0, ry, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      sensors.setMatrixAt(i, dummy.matrix);
+
+      // antenna above sensor
+      dummy.position.set(sx, 2.32, sz);
+      dummy.rotation.set(0, ry, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      antennas.setMatrixAt(i, dummy.matrix);
+    }
+  }
+  scene.add(trunks);
+  scene.add(crowns);
+  scene.add(sensors);
+  scene.add(antennas);
+
+  // irrigation lines (subtle)
+  const lines = new THREE.Group();
+  scene.add(lines);
+  const lineMat = new THREE.MeshStandardMaterial({
+    color:0x1fe07a, roughness:0.60, metalness:0.0,
+    emissive:0x0b2b18, emissiveIntensity:0.20
+  });
+  for(let r=0;r<GRID_ROWS;r+=2){
+    const g = new THREE.CylinderGeometry(0.07, 0.07, (GRID_COLS-1)*SPACING + 8, 10);
+    const m = new THREE.Mesh(g, lineMat);
+    m.rotation.z = Math.PI/2;
+    m.position.set(0, 0.28, startZ + r*SPACING);
+    m.receiveShadow = true;
+    lines.add(m);
+  }
+
+  // ---------- Control box + cloud/server ----------
+  const controlGroup = new THREE.Group();
+  scene.add(controlGroup);
+  controlGroup.position.set(0, 0, -46);
+
+  const box = new THREE.Mesh(
+    new THREE.BoxGeometry(4.2, 2.6, 2.8),
+    new THREE.MeshStandardMaterial({ color:0x214038, roughness:0.65, metalness:0.18 })
+  );
+  box.position.set(0, 1.3, 0);
+  box.castShadow = true;
+  box.receiveShadow = true;
+  controlGroup.add(box);
+
+  const solar = new THREE.Mesh(
+    new THREE.BoxGeometry(4.6, 0.18, 3.0),
+    new THREE.MeshStandardMaterial({
+      color:0x0c2a44, roughness:0.35, metalness:0.65,
+      emissive:0x06203a, emissiveIntensity:0.22
+    })
+  );
+  solar.position.set(0, 2.95, 0);
+  solar.rotation.x = -0.2;
+  solar.castShadow = true;
+  controlGroup.add(solar);
+
+  const led = new THREE.Mesh(
+    new THREE.SphereGeometry(0.10, 16, 16),
+    new THREE.MeshStandardMaterial({ color:0x18ff9a, emissive:0x18ff9a, emissiveIntensity:0.30 })
+  );
+  led.position.set(1.35, 1.05, 1.35);
+  controlGroup.add(led);
+
+  const cloud = new THREE.Group();
+  cloud.visible = false;
+  scene.add(cloud);
+  const cloudMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.5, metalness:0.0, transparent:true, opacity:0.90 });
+  const puff = (x,y,z,r)=>{
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 18), cloudMat);
+    m.position.set(x,y,z);
+    cloud.add(m);
+  };
+  puff(-1.0, 0.0, 0.0, 1.15);
+  puff( 0.0, 0.35, 0.0, 1.45);
+  puff( 1.1, 0.1, 0.0, 1.05);
+  puff( 0.2,-0.3, 0.0, 0.95);
+  cloud.position.set(0, 16, -52);
+
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.07, 0.22, 20, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color:0x6fffe0, transparent:true, opacity:0.0, side:THREE.DoubleSide })
+  );
+  beam.visible = false;
+  scene.add(beam);
+
+  // ---------- Highlights ----------
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(1.0, 0.12, 14, 36),
+    new THREE.MeshBasicMaterial({ color:0x24d07a, transparent:true, opacity:0.0 })
+  );
+  ring.rotation.x = -Math.PI/2;
+  ring.visible = false;
+  scene.add(ring);
+
+  const dangerRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.25, 0.16, 14, 36),
+    new THREE.MeshBasicMaterial({ color:0xff5c5c, transparent:true, opacity:0.0 })
+  );
+  dangerRing.rotation.x = -Math.PI/2;
+  dangerRing.visible = false;
+  scene.add(dangerRing);
+
+  const sensorGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 16, 16),
+    new THREE.MeshBasicMaterial({ color:0x24d07a, transparent:true, opacity:0.0 })
+  );
+  sensorGlow.visible = false;
+  scene.add(sensorGlow);
+
+  // packets from sensor → control box
+  const packet = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 16, 16),
+    new THREE.MeshStandardMaterial({ color:0x24d07a, emissive:0x24d07a, emissiveIntensity:0.85, roughness:0.2 })
+  );
+  packet.visible = false;
+  scene.add(packet);
+
+  // ---------- Demo Risk assignment ----------
+  const rng = (seed)=>{
+    let s = seed>>>0;
+    return ()=>{
+      s = (s*1664525 + 1013904223)>>>0;
+      return (s/4294967296);
+    };
+  };
+  const rand = rng(7);
+  const risk = new Array(COUNT).fill(0).map(()=>{
+    const u = rand();
+    if(u < 0.08) return 0.78 + rand()*0.18;   // high-risk
+    if(u < 0.18) return 0.45 + rand()*0.20;   // medium
+    return 0.05 + rand()*0.25;                // low
+  });
+  const highRiskIdx = [];
+  for(let i=0;i<COUNT;i++) if(risk[i] >= 0.70) highRiskIdx.push(i);
+
+  // Choose ONE sensor to zoom on (fixed)
+  const ZOOM_TREE_INDEX = (highRiskIdx.length ? highRiskIdx[0] : Math.floor(COUNT/2));
+
+  // instance colors for crowns
+  crowns.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(COUNT*3), 3);
+  const baseGreen = new THREE.Color(0x2dd477);
+  const warnCol = new THREE.Color(0xffcc66);
+  const badCol  = new THREE.Color(0xff5c5c);
+  for(let i=0;i<COUNT;i++) baseGreen.toArray(crowns.instanceColor.array, i*3);
+  crowns.instanceColor.needsUpdate = true;
+
+  function setTreeColor(i, level){
+    const c = (level===2) ? badCol : (level===1 ? warnCol : baseGreen);
+    c.toArray(crowns.instanceColor.array, i*3);
+    crowns.instanceColor.needsUpdate = true;
+  }
+
+  // ---------- Timeline (30 seconds) ----------
+  const DURATION = 30;
+  let playing = false;
+  let t0 = 0;
+  const ST = { s1:0, s2:3, s3:10, s4:14, s5:20, s6:26 };
+
+  function stageName(t){
+    if(t < ST.s2) return 1;
+    if(t < ST.s3) return 2;
+    if(t < ST.s4) return 3;
+    if(t < ST.s5) return 4;
+    if(t < ST.s6) return 5;
+    return 6;
+  }
+
+  const camTarget = new THREE.Vector3(0,0,0);
+  function camMoveTo(pos, lookAt, alpha){
+    camera.position.lerp(pos, alpha);
+    camTarget.lerp(lookAt, alpha);
+    camera.lookAt(camTarget);
+  }
+
+  function getStageCamera(t){
+    const st = stageName(t);
+
+    if(st === 1) return { pos:new THREE.Vector3(0, 34, 48), look:new THREE.Vector3(0, 2.0, 0) };
+
+    if(st === 2){
+      // Zoom only on ONE sensor (fixed)
+      const idx = ZOOM_TREE_INDEX;
+      const s = sensorPos[idx].clone();
+      const a = t * 0.55;
+      const radius = 5.6;
+      const cx = s.x + Math.cos(a) * radius;
+      const cz = s.z + Math.sin(a) * radius;
+      const cy = 5.4;
+      return { pos:new THREE.Vector3(cx, cy, cz), look:new THREE.Vector3(s.x, 2.15, s.z) };
+    }
+
+    if(st === 3) return { pos:new THREE.Vector3(0, 10.5, -34), look:new THREE.Vector3(0, 1.3, -46) };
+    if(st === 4) return { pos:new THREE.Vector3(0, 16.5, -30), look:new THREE.Vector3(0, 15.8, -52) };
+    if(st === 5) return { pos:new THREE.Vector3(0, 28, 24), look:new THREE.Vector3(0, 2.0, 0) };
+    return { pos:new THREE.Vector3(0, 34, 48), look:new THREE.Vector3(0, 2.0, 0) };
+  }
+
+  function updateUIForStage(t){
+    const st = stageName(t);
+    setCaption(false, '');
+    setPanel(false, '', '', '');
+
+    if(st === 1){
+      setCaption(true, "المشكلة: الإصابة داخل الجذع قد لا تظهر مبكرًا… نحتاج مراقبة ذكية مستمرة.");
+      setPanel(true, "PalmGuard", "Sensors → AI → Risk", `
+        <div class="row"><div class="muted">المشهد</div><div class="val">مزرعة نخيل (شبكة ${GRID_COLS}×${GRID_ROWS})</div></div>
+        <div class="row"><div class="muted">الحساسات</div><div class="val">جهاز صغير مثبت على الجذع</div></div>
+        <div class="row"><div class="muted">الهدف</div><div class="val">إنذار مبكر + تحديد موقع الشجرة</div></div>
+      `);
+    }
+
+    if(st === 2){
+      setCaption(true, "مرحلة الزوم (حساس واحد): نعرض كيف يقرأ الحساس الصوت ويحسب النموذج احتمال الإصابة.");
+      const idx = ZOOM_TREE_INDEX;
+      const p = risk[idx];
+      const tag = p >= 0.70 ? "bad" : (p >= 0.45 ? "warn" : "good");
+      const status = p >= 0.70 ? "High Risk" : (p >= 0.45 ? "Medium" : "Low");
+      setPanel(true, "Sensor Zoom Demo", "Acoustic Segments → Log‑Mel → CNN", `
+        <div class="row"><div class="muted">Tree ID</div><div class="val">tree_${String(idx+1).padStart(4,'0')}</div></div>
+        <div class="row"><div class="muted">Risk (segment)</div><div class="val">${p.toFixed(2)}</div></div>
+        <div class="tags">
+          <span class="tag ${tag}">Status: <b>${status}</b></span>
+          <span class="tag">Transform: <b>Log‑Mel</b></span>
+          <span class="tag">Model: <b>CNN</b></span>
+        </div>
+      `);
+    }
+
+    if(st === 3){
+      setCaption(true, "إرسال النتائج: من الحساس → وحدة التحكم → تجميع وتحضير لقرار على مستوى الشجرة.");
+      setPanel(true, "Transmission", "Sensor → Control Box", `
+        <div class="row"><div class="muted">Gateway</div><div class="val">Edge Node (مثال)</div></div>
+        <div class="row"><div class="muted">Payload</div><div class="val">Risk + Timestamp + Tree ID</div></div>
+        <div class="tags">
+          <span class="tag good">Packet: Encrypted</span>
+          <span class="tag">Wi‑Fi / LoRa (مثال)</span>
+        </div>
+      `);
+    }
+
+    if(st === 4){
+      setCaption(true, "على السيرفر: دمج Top‑K segments → حساب Risk Score للشجرة → تحديث لوحة التحكم.");
+      setPanel(true, "Server Pipeline", "Top‑K → Tree Risk Score", `
+        <div class="tags">
+          <span class="tag">Validation</span>
+          <span class="tag">Top‑K Aggregation</span>
+          <span class="tag">Thresholding</span>
+          <span class="tag">Dashboard Update</span>
+        </div>
+        <div class="row"><div class="muted">High‑risk trees</div><div class="val">${highRiskIdx.length} / ${COUNT}</div></div>
+      `);
+    }
+
+    if(st === 5){
+      setCaption(true, "النتيجة: تمييز الأشجار عالية الخطورة باللون الأحمر لتوجيه فريق المزرعة مباشرة.");
+      setPanel(true, "Risk Map", "Red = High‑risk", `
+        <div class="row"><div class="muted">Decision</div><div class="val">Inspect / Treat prioritized trees</div></div>
+        <div class="tags">
+          <span class="tag bad">High‑risk</span>
+          <span class="tag warn">Medium</span>
+          <span class="tag good">Low</span>
+        </div>
+      `);
+    }
+
+    if(st === 6){
+      setCaption(true, "خلاصة: مراقبة ذكية + تحديد موقع الشجرة + تدخل أسرع وأقل تكلفة.");
+      setPanel(true, "Summary", "Operational Impact", `
+        <div class="row"><div class="muted">Total trees</div><div class="val">${COUNT}</div></div>
+        <div class="row"><div class="muted">High‑risk flagged</div><div class="val">${highRiskIdx.length}</div></div>
+        <div class="row"><div class="muted">Next step</div><div class="val">ربط ببيانات حقيقية + تحسين Recall</div></div>
+      `);
+    }
+  }
+
+  function updateEvents(t){
+    const st = stageName(t);
+
+    // LED blink when sending or server stage
+    const blink = (st === 3 || st === 4) ? (Math.sin(t*10)*0.5+0.5) : 0;
+    led.material.emissiveIntensity = lerp(0.18, 1.1, blink);
+
+    // Stage 2: fixed rings + glow on the same sensor/tree
+    ring.visible = (st === 2);
+    dangerRing.visible = (st === 2);
+    sensorGlow.visible = (st === 2);
+
+    if(st === 2){
+      const idx = ZOOM_TREE_INDEX;
+      const tp = treePos[idx];
+      const sp = sensorPos[idx];
+      const phase = (t*1.6) % 1;
+
+      ring.position.set(tp.x, 0.45, tp.z);
+      ring.scale.setScalar(lerp(0.7, 1.65, phase));
+      ring.material.opacity = lerp(0.40, 0.0, smoothstep(phase));
+
+      sensorGlow.position.set(sp.x, sp.y, sp.z);
+      sensorGlow.material.opacity = 0.35 + Math.sin(t*9)*0.10;
+
+      const p = risk[idx];
+      const isHigh = p >= 0.70;
+      dangerRing.position.set(tp.x, 0.46, tp.z);
+      dangerRing.material.color.setHex(isHigh ? 0xff5c5c : 0xffcc66);
+      dangerRing.material.opacity = isHigh ? 0.20 : 0.08;
+      dangerRing.scale.setScalar(1.10);
+    } else {
+      ring.material.opacity = 0.0;
+      dangerRing.material.opacity = 0.0;
+      sensorGlow.material.opacity = 0.0;
+    }
+
+    // Packet traveling (stage 3): show that multiple sensors can send over time
+    packet.visible = (st === 3);
+    if(st === 3){
+      const u = clamp((t - ST.s3) / (ST.s4 - ST.s3), 0, 1);
+      const idx = Math.floor(lerp(0, COUNT-1, u));
+      const from = sensorPos[idx].clone().add(new THREE.Vector3(0, 0.2, 0));
+      const to = controlGroup.localToWorld(new THREE.Vector3(0, 2.2, 0));
+      const mid = from.clone().lerp(to, 0.5); mid.y += 10.0;
+
+      const a = smoothstep((u*1.2) % 1);
+      const p1 = from.clone().lerp(mid, a);
+      const p2 = mid.clone().lerp(to, a);
+      const p  = p1.clone().lerp(p2, a);
+      packet.position.copy(p);
+    }
+
+    // Cloud + beam (stage 4)
+    cloud.visible = (st === 4);
+    beam.visible = (st === 4);
+    if(st === 4){
+      cloud.position.y = 16 + Math.sin(t*1.2)*0.25;
+
+      const from = controlGroup.localToWorld(new THREE.Vector3(0, 3.3, 0));
+      const to = cloud.position.clone();
+
+      const dir = to.clone().sub(from);
+      const len = dir.length();
+      const mid = from.clone().add(dir.multiplyScalar(0.5));
+
+      beam.position.copy(mid);
+      beam.scale.set(1, len/20, 1);
+
+      const up = new THREE.Vector3(0,1,0);
+      const q = new THREE.Quaternion().setFromUnitVectors(up, to.clone().sub(from).normalize());
+      beam.quaternion.copy(q);
+
+      beam.material.opacity = 0.18 + Math.sin(t*6)*0.04;
+    } else {
+      beam.material.opacity = 0.0;
+    }
+
+    // Final highlight: color risky trees (stage 5+)
+    if(st >= 5){
+      for(let i=0;i<COUNT;i++){
+        const p = risk[i];
+        if(p >= 0.70) setTreeColor(i, 2);
+        else if(p >= 0.45) setTreeColor(i, 1);
+        else setTreeColor(i, 0);
+      }
+    } else {
+      for(let i=0;i<COUNT;i++) setTreeColor(i, 0);
+    }
+  }
+
+  function updateAt(t){
+    timerPill.textContent = formatTime(t);
+    updateUIForStage(t);
+
+    const c = getStageCamera(t);
+    const alpha = 0.07;
+    const drift = new THREE.Vector3(Math.sin(t*0.28)*0.12, Math.sin(t*0.18)*0.08, Math.cos(t*0.22)*0.10);
+    camMoveTo(c.pos.clone().add(drift), c.look, alpha);
+
+    updateEvents(t);
+  }
+
+  // Controls
+  document.getElementById('playBtn').addEventListener('click', ()=>{
+    playing = true;
+    t0 = now();
+  });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    playing = false;
+    updateAt(0);
+  });
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const t = playing ? clamp(now() - t0, 0, DURATION) : 0;
+    if(playing && t >= DURATION) playing = false;
+    updateAt(t);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  addEventListener('resize', ()=>{
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  updateAt(0);
+</script>
+</body>
+</html>
